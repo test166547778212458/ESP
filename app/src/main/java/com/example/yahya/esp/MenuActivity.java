@@ -12,6 +12,8 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 
+import Location.LocationFinder;
+
 
 public class MenuActivity extends AppCompatActivity{
     private static final String TAG = MenuActivity.class.getSimpleName();

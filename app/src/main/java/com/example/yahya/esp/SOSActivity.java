@@ -12,11 +12,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
+import com.android.volley.NetworkResponse;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.VolleyLog;
 import com.android.volley.toolbox.StringRequest;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import Location.LocationFinder;
 import connection.RequestQueueSingleton;
@@ -35,10 +40,14 @@ public class SOSActivity extends AppCompatActivity {
     private AlertDialog failed_ad;
     private AlertDialog succeed_ad;
 
+    String url;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.sos_layout);
+
+        url = getString(R.string.server)+getString(R.string.path_1);
 
         pDialog = new ProgressDialog(this);
         pDialog.setMessage("Sending...");
@@ -129,28 +138,50 @@ public class SOSActivity extends AppCompatActivity {
     private void sendDataToServer(final int op){
         showpDialog();
 
-        String url = getString(R.string.server)+getString(R.string.path_1)+"?op="+op+"&lat="+latitude+"&lon="+longitude;
-
-        Log.d("URL",url);
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>()
+                {
                     @Override
                     public void onResponse(String response) {
-                        Log.d("onResponse",response);
+                        Log.i("VOLLEY", response);
                         hidepDialog();
                         succeed_ad.show();
                     }
-                }, new Response.ErrorListener() {
+                },
+                new Response.ErrorListener()
+                {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("VOLLEY", error.toString());
+                        hidepDialog();
+                        failed_ad.show();
+                    }
+                }
+        ) {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                VolleyLog.d(TAG, "Error: " + error.getMessage());
-                hidepDialog();
-                failed_ad.show();
+            protected Map<String, String> getParams()
+            {
+                Map<String, String>  params = new HashMap<String, String>();
+                params.put("op", String.valueOf(op));
+                params.put("lat", String.valueOf(latitude));
+                params.put("lon", String.valueOf(longitude));
+                return params;
             }
-        });
 
-        // Add the request to the RequestQueue.
-        RequestQueueSingleton.getInstance().addToRequestQueue(stringRequest);
+            @Override
+            protected Response<String> parseNetworkResponse(NetworkResponse response) {
+                if (response != null) {
+                    Log.e("Request Code",String.valueOf(response.statusCode));
+                }
+                return super.parseNetworkResponse(response);
+            }
+        };
+
+        postRequest.setRetryPolicy(new DefaultRetryPolicy(0,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        RequestQueueSingleton.getInstance().addToRequestQueue(postRequest);
     }
 
     private void showpDialog() {

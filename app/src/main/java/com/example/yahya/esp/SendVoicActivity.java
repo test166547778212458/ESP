@@ -16,6 +16,7 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -28,7 +29,9 @@ import connection.RequestQueueSingleton;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 public class SendVoicActivity extends AppCompatActivity {
     private static final String TAG = SendVoicActivity.class.getSimpleName();
@@ -37,6 +40,7 @@ public class SendVoicActivity extends AppCompatActivity {
 
     private final int SPEECH_RECOGNITION_CODE = 1;
     private EditText message;
+    String url;
 
     private ProgressDialog pDialog;
     private AlertDialog.Builder noInternet_adb;
@@ -53,6 +57,7 @@ public class SendVoicActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.send_voice_message);
 
+        url = getString(R.string.server)+getString(R.string.path_1);
         message = (EditText) findViewById(R.id.editText);
 
         pDialog = new ProgressDialog(this);
@@ -224,40 +229,47 @@ public class SendVoicActivity extends AppCompatActivity {
         return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
-    private void sendDataToServer(String msg, final int op){
+    private void sendDataToServer(final String msg, final int op){
         showpDialog();
 
-        String encodedMessage = null;
-        try {
-            encodedMessage = URLEncoder.encode(msg, "utf-8");
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
-        }
-
-        String url = getString(R.string.server)+getString(R.string.path_1)+"?op="+op+"&msg="+encodedMessage+
-                "&lat="+latitude+"&lon="+longitude;
-
-        Log.d("URL",url);
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>()
+                {
                     @Override
                     public void onResponse(String response) {
-                        Log.d("onResponse",response);
+                        Log.i("VOLLEY", response);
+                        message.setText("");
                         hidepDialog();
                         succeed_ad.show();
                     }
-                }, new Response.ErrorListener() {
+                },
+                new Response.ErrorListener()
+                {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("VOLLEY", error.toString());
+                        hidepDialog();
+                        failed_ad.show();
+                    }
+                }
+        ) {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                VolleyLog.d(TAG, "Error: " + error.getMessage());
-                hidepDialog();
-                failed_ad.show();
+            protected Map<String, String> getParams()
+            {
+                Map<String, String>  params = new HashMap<String, String>();
+                params.put("op", String.valueOf(op));
+                params.put("lat", String.valueOf(latitude));
+                params.put("lon", String.valueOf(longitude));
+                params.put("msg", msg);
+                return params;
             }
-        });
+        };
 
-        message.setText("");
-        // Add the request to the RequestQueue.
-        RequestQueueSingleton.getInstance().addToRequestQueue(stringRequest);
+        postRequest.setRetryPolicy(new DefaultRetryPolicy(0,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        RequestQueueSingleton.getInstance().addToRequestQueue(postRequest);
     }
 
     private void showpDialog() {

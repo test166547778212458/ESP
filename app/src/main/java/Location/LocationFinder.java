@@ -15,6 +15,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
@@ -32,6 +33,8 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 import connection.RequestQueueSingleton;
 
@@ -45,6 +48,7 @@ public class LocationFinder extends Application implements GoogleApiClient.Conne
     private Activity activity;
     private FusedLocationProviderApi fusedLocationProviderApi = LocationServices.FusedLocationApi;
     Location location;
+    String url;
 
     private SharedPreferences sp;
     private SharedPreferences.Editor spE;
@@ -66,6 +70,8 @@ public class LocationFinder extends Application implements GoogleApiClient.Conne
     public void onCreate() {
         super.onCreate();
         Instance = this;
+
+        url = getString(R.string.server)+getString(R.string.path_2);
 
         googleApiClient = new GoogleApiClient.Builder(this)
                 .addApi(LocationServices.API)
@@ -220,25 +226,37 @@ public class LocationFinder extends Application implements GoogleApiClient.Conne
     }
 
     private void sendLocation(){
-
-        String url = getString(R.string.server)+getString(R.string.path_2)+"?lat="+location.getLatitude()+
-                "&lon="+location.getLongitude();
-
-        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                new Response.Listener<String>() {
+        StringRequest postRequest = new StringRequest(Request.Method.POST, url,
+                new Response.Listener<String>()
+                {
                     @Override
                     public void onResponse(String response) {
-                        Log.d("onResponse",response);
+                        Log.i("VOLLEY", response);
                     }
-                }, new Response.ErrorListener() {
+                },
+                new Response.ErrorListener()
+                {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        Log.e("VOLLEY", error.toString());
+                    }
+                }
+        ) {
             @Override
-            public void onErrorResponse(VolleyError error) {
-                VolleyLog.d(TAG, "Error: " + error.getMessage());
+            protected Map<String, String> getParams()
+            {
+                Map<String, String>  params = new HashMap<String, String>();
+                params.put("lat", String.valueOf(location.getLatitude()));
+                params.put("lon", String.valueOf(location.getLongitude()));
+                return params;
             }
-        });
+        };
 
-        // Add the request to the RequestQueue.
-        RequestQueueSingleton.getInstance().addToRequestQueue(stringRequest);
+        postRequest.setRetryPolicy(new DefaultRetryPolicy(0,
+                DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
+
+        RequestQueueSingleton.getInstance().addToRequestQueue(postRequest);
     }
 
     public GoogleApiClient getGoogleApiClient(){
@@ -264,4 +282,6 @@ public class LocationFinder extends Application implements GoogleApiClient.Conne
     public Context getApp(){
         return getApplicationContext();
     }
+
+    private void removeTimeFromSharedPreference(){spE.remove(LSL);}
 }

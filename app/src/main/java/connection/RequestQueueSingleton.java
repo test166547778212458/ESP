@@ -19,6 +19,7 @@ public class RequestQueueSingleton{
 
 
     private RequestQueueSingleton() {
+
         Instance = this;
     }
 

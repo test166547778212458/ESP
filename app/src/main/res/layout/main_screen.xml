@@ -75,18 +75,6 @@
         <ImageButton
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:visibility="gone"
-            android:id="@+id/imageButton6"
-            android:layout_gravity="left|bottom"
-            android:layout_marginBottom="70dp"
-            android:layout_marginLeft="80dp"
-            android:background="#6d96b2"
-            android:onClick="goToContScrn"
-            android:src="@drawable/contactus" />
-
-        <ImageButton
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
             android:id="@+id/imageButton7"
             android:layout_gravity="right|bottom"
             android:background="#6d96b2"
